@@ -5,7 +5,7 @@ import feedparser
 weechat.register(
         "WeeMustFeed",
         "Bit Shift <bitshift@bigmacintosh.net>",
-        "0.1.2",
+        "0.1.3",
         "MIT",
         "RSS/Atom/RDF aggregator for weechat",
         "",
@@ -24,11 +24,18 @@ updating = {}
 partial_feeds = {}
 
 help_message = """
+COMMANDS:
 a <name> <url>   Add a feed with display name of <name> and URL of <url>.
 d <name>         Delete the feed with display name <name>.
 u <name> <url>   Update the feed with display name <name> to use URL <url>.
 l                List all feeds known to WeeMustFeed.
 ?                Display this help message.
+
+CONFIG:
+plugins.var.python.weemustfeed.interval
+    Interval between update checks, in seconds. Must be a number, but is stored
+    as a string. Blame the scripting API.
+    default: "300"
 """.strip()
 
 
