@@ -5,7 +5,7 @@ import feedparser
 weechat.register(
         "WeeMustFeed",
         "Bit Shift <bitshift@bigmacintosh.net>",
-        "0.1.1",
+        "0.1.2",
         "MIT",
         "RSS/Atom/RDF aggregator for weechat",
         "",
