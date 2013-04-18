@@ -4,8 +4,8 @@ import feedparser
 
 weechat.register(
         "WeeMustFeed",
-        "Bit Shift",
-        "0.1.0",
+        "Bit Shift <bitshift@bigmacintosh.net>",
+        "0.1.1",
         "MIT",
         "RSS/Atom/RDF aggregator for weechat",
         "",
@@ -194,8 +194,8 @@ def weemustfeed_update_single_feed_cb(feed, command, return_code, out, err):
             if only_new:
                 weechat.prnt(weemustfeed_buffer, "{feed}\t{title} {url}".format(**{
                     "feed": feed,
-                    "title": entry.title,
-                    "url": entry.link
+                    "title": entry.title.encode("utf-8"),
+                    "url": entry.link.encode("utf-8")
                     }))
                 last_id = entry.id
             elif entry.id == last_id:
