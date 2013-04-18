@@ -58,11 +58,6 @@ def weemustfeed_input_cb(data, buffer, input_data):
                 weechat.config_set_plugin("feed." + chunks[1].lower() + ".url", chunks[2])
                 weechat.config_set_plugin("feeds", ";".join(current_feeds))
                 weechat.prnt(weemustfeed_buffer, "Added '" + chunks[1] + "'.")
-                weechat.hook_process(
-                        "url:" + chunks[2],
-                        0,
-                        "weemustfeed_update_single_feed_cb", chunks[1]
-                        )
     elif chunks[0] == "d":
         if len(chunks) != 2:
             weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "Wrong number of parameters. Syntax is 'd <name>'.")
@@ -175,34 +170,34 @@ def weemustfeed_update_single_feed_cb(feed, command, return_code, out, err):
     else:  # all good, and we have a complete feed
         if not weechat.config_is_set_plugin("feed." + feed.lower() + ".last_id"):
             weechat.config_set_plugin("feed." + feed.lower() + ".last_id", "")
-            last_id = None
-        else:
-            last_id = weechat.config_get_plugin("feed." + feed.lower() + ".last_id")
-            if last_id == "":
-                last_id = None
+            last_id = ""
+
+        last_id = weechat.config_get_plugin("feed." + feed.lower() + ".last_id")
 
         parsed_feed = feedparser.parse(partial_feeds[feed] + out)
 
         entries = list(reversed(parsed_feed.entries))
 
-        if last_id in [entry.id for entry in entries]:
-            only_new = False
+        if (last_id == "") and len(entries) > 0:
+            last_id = entries[-1].id
         else:
-            only_new = True
+            if last_id in [entry.id for entry in entries]:
+                only_new = False
+            else:
+                only_new = True
 
-        for entry in entries:
-            if only_new:
-                weechat.prnt(weemustfeed_buffer, "{feed}\t{title} {url}".format(**{
-                    "feed": feed,
-                    "title": entry.title.encode("utf-8"),
-                    "url": entry.link.encode("utf-8")
-                    }))
-                last_id = entry.id
-            elif entry.id == last_id:
-                only_new = True  # everything else will be newer
+            for entry in entries:
+                if only_new:
+                    weechat.prnt(weemustfeed_buffer, "{feed}\t{title} {url}".format(**{
+                        "feed": feed,
+                        "title": entry.title.encode("utf-8"),
+                        "url": entry.link.encode("utf-8")
+                        }))
+                    last_id = entry.id
+                elif entry.id == last_id:
+                    only_new = True  # everything else will be newer
 
-        if last_id is not None:
-            weechat.config_set_plugin("feed." + feed.lower() + ".last_id", last_id)
+        weechat.config_set_plugin("feed." + feed.lower() + ".last_id", last_id)
 
     partial_feeds[feed] = ""
     return weechat.WEECHAT_RC_OK
