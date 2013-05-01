@@ -25,11 +25,13 @@ partial_feeds = {}
 
 help_message = """
 COMMANDS:
-a <name> <url>   Add a feed with display name of <name> and URL of <url>.
-d <name>         Delete the feed with display name <name>.
-u <name> <url>   Update the feed with display name <name> to use URL <url>.
-l                List all feeds known to WeeMustFeed.
-?                Display this help message.
+a <name> <url>        Add a feed with display name of <name> and URL of <url>.
+d <name>              Delete the feed with display name <name>.
+u <name> <url>        Update the feed with display name <name> to use URL <url>.
+l                     List all feeds known to WeeMustFeed.
+t <name>              Toggle a feed - disable/enable it temporarily without fully removing it.
+s <name> [<number>]   Show update status of a feed, and the <number> most recent items if <number> is provided.
+?                     Display this help message.
 
 CONFIG:
 plugins.var.python.weemustfeed.interval
@@ -107,6 +109,33 @@ def weemustfeed_input_cb(data, buffer, input_data):
             for feed in current_feeds:
                 if feed != "":
                     weechat.prnt(weemustfeed_buffer, "\t" + feed + ": " + weechat.config_get_plugin("feed." + feed.lower() + ".url"))
+    elif chunks[0] == "t":
+        if len(chunks) != 2:
+            weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "Wrong number of parameters. Syntax is 't <name>'.")
+            return weechat.WEECHAT_RC_ERROR
+        elif any([c not in (string.ascii_letters + string.digits) for c in chunks[1]]):
+            weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "Only A-Z, a-z, and 0-9 permitted in names.")
+            return weechat.WEECHAT_RC_ERROR
+        else:
+            current_feeds = weechat.config_get_plugin("feeds").strip().split(";")
+            if not chunks[1] in current_feeds:
+                weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "No such feed exists.")
+                return weechat.WEECHAT_RC_ERROR
+            else:
+                if not weechat.config_is_set_plugin("feed." + chunks[1].lower() + ".enabled"):
+                    feed_enabled = True
+                else:
+                    feed_enabled = (weechat.config_get_plugin("feed." +
+                        chunks[1].lower() + ".enabled").lower() == "yes")
+
+                if feed_enabled:
+                    weechat.config_set_plugin("feed." + chunks[1].lower() +
+                            ".enabled", "no")
+                    weechat.prnt(weemustfeed_buffer, "Disabled '" + chunks[1] + "'.")
+                else:
+                    weechat.config_set_plugin("feed." + chunks[1].lower() +
+                            ".enabled", "yes")
+                    weechat.prnt(weemustfeed_buffer, "Enabled '" + chunks[1] + "'.")
     elif chunks[0] == "?":
         if len(chunks) != 1:
             weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "Wrong number of parameters. Syntax is '?'.")
@@ -137,7 +166,7 @@ def weemustfeed_command_cb(data, buffer, args):
                 )
 
         weechat.buffer_set(weemustfeed_buffer, "title",
-                "WeeMustFeed - a: Add feed, d: Delete feed, u: Update URL, l: List feeds, ?: Show help")
+                "WeeMustFeed - a: Add feed, d: Delete feed, u: Update URL, l: List feeds, t: Toggle feed, s: Feed status, ?: Show help")
 
         set_timer()
 
@@ -213,7 +242,9 @@ def weemustfeed_update_single_feed_cb(feed, command, return_code, out, err):
 def weemustfeed_update_feeds_cb(data, remaining_calls):
     for feed in weechat.config_get_plugin("feeds").strip().split(";"):
         if weechat.config_is_set_plugin("feed." + feed.lower() + ".url"):
-            weechat.hook_process(
+            if not (weechat.config_is_set_plugin("feed." + feed.lower() + ".enabled") and
+                    weechat.config_get_plugin("feed." + feed.lower() + ".enabled").lower() != "yes"):
+                weechat.hook_process(
                     "url:" + weechat.config_get_plugin("feed." + feed.lower() + ".url"),
                     0,
                     "weemustfeed_update_single_feed_cb", feed
