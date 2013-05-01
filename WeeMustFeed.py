@@ -30,7 +30,7 @@ d <name>              Delete the feed with display name <name>.
 u <name> <url>        Update the feed with display name <name> to use URL <url>.
 l                     List all feeds known to WeeMustFeed.
 t <name>              Toggle a feed - disable/enable it temporarily without fully removing it.
-s <name> [<number>]   Show update status of a feed, and the <number> most recent items if <number> is provided.
+s <name>              Show status of a feed, and the most recent item if it's been updated at least once.
 ?                     Display this help message.
 
 CONFIG:
@@ -213,6 +213,10 @@ def weemustfeed_update_single_feed_cb(feed, command, return_code, out, err):
         parsed_feed = feedparser.parse(partial_feeds[feed] + out)
 
         entries = list(reversed(parsed_feed.entries))
+
+        for entry in entries:
+            if not hasattr(entry, "id"):
+                entry.id = entry.link
 
         if (last_id == "") and len(entries) > 0:
             last_id = entries[-1].id
