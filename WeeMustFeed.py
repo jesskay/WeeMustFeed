@@ -20,7 +20,7 @@ default_settings = {
 
 weemustfeed_buffer = None
 weemustfeed_timer = None
-updating = {}
+updating = set()
 partial_feeds = {}
 
 help_message = """
@@ -30,7 +30,6 @@ d <name>              Delete the feed with display name <name>.
 u <name> <url>        Update the feed with display name <name> to use URL <url>.
 l                     List all feeds known to WeeMustFeed.
 t <name>              Toggle a feed - disable/enable it temporarily without fully removing it.
-s <name>              Show status of a feed, and the most recent item if it's been updated at least once.
 ?                     Display this help message.
 
 CONFIG:
@@ -47,6 +46,8 @@ def show_help():
 
 
 def weemustfeed_input_cb(data, buffer, input_data):
+    global updating
+
     chunks = input_data.split()
 
     if chunks[0] == "a":
@@ -108,7 +109,20 @@ def weemustfeed_input_cb(data, buffer, input_data):
             current_feeds = weechat.config_get_plugin("feeds").strip().split(";")
             for feed in current_feeds:
                 if feed != "":
-                    weechat.prnt(weemustfeed_buffer, "\t" + feed + ": " + weechat.config_get_plugin("feed." + feed.lower() + ".url"))
+                    if (weechat.config_is_set_plugin("feed." + feed.lower() + ".enabled") and
+                        weechat.config_get_plugin("feed." + feed.lower() + ".enabled").lower() != "yes"):
+                        feed_status = "disabled"
+                    elif not (weechat.config_is_set_plugin("feed." + feed.lower() + ".last_id") and
+                              weechat.config_get_plugin("feed." + feed.lower() + ".last_id") != ""):
+                        feed_status = "new"
+                    elif feed in updating:
+                        feed_status = "updating"
+                    elif (weechat.config_is_set_plugin("feed." + feed.lower() + ".enabled") and
+                          weechat.config_get_plugin("feed." + feed.lower() + ".enabled").lower() != "yes"):
+                        feed_status = "disabled"
+                    else:
+                        feed_status = "enabled"
+                    weechat.prnt(weemustfeed_buffer, "\t" + feed + ": " + weechat.config_get_plugin("feed." + feed.lower() + ".url") + " [" + feed_status + "]")
     elif chunks[0] == "t":
         if len(chunks) != 2:
             weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "Wrong number of parameters. Syntax is 't <name>'.")
@@ -166,7 +180,7 @@ def weemustfeed_command_cb(data, buffer, args):
                 )
 
         weechat.buffer_set(weemustfeed_buffer, "title",
-                "WeeMustFeed - a: Add feed, d: Delete feed, u: Update URL, l: List feeds, t: Toggle feed, s: Feed status, ?: Show help")
+                "WeeMustFeed - a: Add feed, d: Delete feed, u: Update URL, l: List feeds, t: Toggle feed, ?: Show help")
 
         set_timer()
 
@@ -183,7 +197,7 @@ def weemustfeed_reset_timer_cb(data, option, value):
 
 
 def weemustfeed_update_single_feed_cb(feed, command, return_code, out, err):
-    global partial_feeds
+    global partial_feeds, updating
 
     if not feed in partial_feeds:
         partial_feeds[feed] = ""
@@ -240,14 +254,19 @@ def weemustfeed_update_single_feed_cb(feed, command, return_code, out, err):
         weechat.config_set_plugin("feed." + feed.lower() + ".last_id", last_id)
 
     partial_feeds[feed] = ""
+    if feed in updating:
+        updating.remove(feed)
     return weechat.WEECHAT_RC_OK
 
 
 def weemustfeed_update_feeds_cb(data, remaining_calls):
+    global updating
+
     for feed in weechat.config_get_plugin("feeds").strip().split(";"):
         if weechat.config_is_set_plugin("feed." + feed.lower() + ".url"):
             if not (weechat.config_is_set_plugin("feed." + feed.lower() + ".enabled") and
                     weechat.config_get_plugin("feed." + feed.lower() + ".enabled").lower() != "yes"):
+                updating.add(feed)
                 weechat.hook_process(
                     "url:" + weechat.config_get_plugin("feed." + feed.lower() + ".url"),
                     0,
