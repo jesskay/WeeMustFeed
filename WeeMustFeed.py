@@ -5,7 +5,7 @@ import feedparser
 weechat.register(
         "WeeMustFeed",
         "Bit Shift <bitshift@bigmacintosh.net>",
-        "0.2.1",
+        "0.2.2",
         "MIT",
         "RSS/Atom/RDF aggregator for weechat",
         "",
@@ -263,7 +263,6 @@ def weemustfeed_update_single_feed_cb(feed, command, return_code, out, err):
     if feed in updating:
         updating.remove(feed)
     if feed in fetch_hooks:
-        weechat.unhook(fetch_hooks[feed])
         del fetch_hooks[feed]
     return status
 
