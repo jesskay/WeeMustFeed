@@ -1,3 +1,6 @@
+# Copyright (c) 2013 Bit Shift <bitshift@bigmacintosh.net>
+# Licensed under the MIT license:
+# http://www.opensource.org/licenses/mit-license.php
 import weechat
 import string
 import feedparser
