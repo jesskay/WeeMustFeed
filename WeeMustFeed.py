@@ -20,6 +20,7 @@ default_settings = {
 
 weemustfeed_buffer = None
 weemustfeed_timer = None
+fetch_hooks = {}
 updating = set()
 partial_feeds = {}
 
@@ -165,6 +166,9 @@ def weemustfeed_close_cb(data, buffer):
 
     weemustfeed_buffer = None
     weechat.unhook(weemustfeed_timer)
+    for feed in fetch_hooks:
+        weechat.unhook(fetch_hooks[feed])
+        del fetch_hooks[feed]
     weemustfeed_timer = None
     return weechat.WEECHAT_RC_OK
 
@@ -207,16 +211,16 @@ def weemustfeed_update_single_feed_cb(feed, command, return_code, out, err):
         return weechat.WEECHAT_RC_OK
     elif return_code == 1:
         weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "Invalid URL for feed '" + feed + "'.")
-        return weechat.WEECHAT_RC_ERROR
+        status = weechat.WEECHAT_RC_ERROR
     elif return_code == 2:
         weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "Transfer error while fetching feed '" + feed + "'.")
-        return weechat.WEECHAT_RC_ERROR
+        status = weechat.WEECHAT_RC_ERROR
     elif return_code == 3:
         weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "Out of memory while fetching feed '" + feed + "'.")
-        return weechat.WEECHAT_RC_ERROR
+        status = weechat.WEECHAT_RC_ERROR
     elif return_code == 4:
         weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "Error with a file while fetching feed '" + feed + "'.")
-        return weechat.WEECHAT_RC_ERROR
+        status = weechat.WEECHAT_RC_ERROR
     else:  # all good, and we have a complete feed
         if not weechat.config_is_set_plugin("feed." + feed.lower() + ".last_id"):
             weechat.config_set_plugin("feed." + feed.lower() + ".last_id", "")
@@ -253,10 +257,15 @@ def weemustfeed_update_single_feed_cb(feed, command, return_code, out, err):
 
         weechat.config_set_plugin("feed." + feed.lower() + ".last_id", last_id)
 
+        status = weechat.WEECHAT_RC_OK
+
     partial_feeds[feed] = ""
     if feed in updating:
         updating.remove(feed)
-    return weechat.WEECHAT_RC_OK
+    if feed in fetch_hooks:
+        weechat.unhook(fetch_hooks[feed])
+        del fetch_hooks[feed]
+    return status
 
 
 def weemustfeed_update_feeds_cb(data, remaining_calls):
@@ -267,11 +276,12 @@ def weemustfeed_update_feeds_cb(data, remaining_calls):
             if not (weechat.config_is_set_plugin("feed." + feed.lower() + ".enabled") and
                     weechat.config_get_plugin("feed." + feed.lower() + ".enabled").lower() != "yes"):
                 updating.add(feed)
-                weechat.hook_process(
-                    "url:" + weechat.config_get_plugin("feed." + feed.lower() + ".url"),
-                    0,
-                    "weemustfeed_update_single_feed_cb", feed
-                    )
+                if not feed in fetch_hooks:
+                    fetch_hooks[feed] = weechat.hook_process(
+                        "url:" + weechat.config_get_plugin("feed." + feed.lower() + ".url"),
+                        0,
+                        "weemustfeed_update_single_feed_cb", feed
+                        )
         elif feed != "":
             weechat.prnt(weemustfeed_buffer, weechat.prefix("error") + "Feed '" + feed + "' has no URL set.")
     return weechat.WEECHAT_RC_OK
