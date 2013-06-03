@@ -8,7 +8,7 @@ import feedparser
 weechat.register(
         "WeeMustFeed",
         "Bit Shift <bitshift@bigmacintosh.net>",
-        "0.2.2",
+        "0.2.3",
         "MIT",
         "RSS/Atom/RDF aggregator for weechat",
         "",
@@ -188,6 +188,9 @@ def weemustfeed_command_cb(data, buffer, args):
 
         weechat.buffer_set(weemustfeed_buffer, "title",
                 "WeeMustFeed - a: Add feed, d: Delete feed, u: Update URL, l: List feeds, t: Toggle feed, ?: Show help")
+
+        weechat.hook_signal_send("logger_backlog",
+                weechat.WEECHAT_HOOK_SIGNAL_POINTER, weemustfeed_buffer)
 
         set_timer()
 
